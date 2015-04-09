@@ -14,11 +14,17 @@ int v, pos, i = 0;
 
 byte noteBuf[5] = {255,255,255,255,255};  // set up keyboard buffer for 5 notes
 
+
+//---------------------------------------------------------------------------------------------
+
 void handleNoteOff(byte channel, byte note, byte velocity)
 {
   note_delete(note);
   playNote();
 }
+
+
+//---------------------------------------------------------------------------------------------
 
 void handleNoteOn(byte channel, byte note, byte velocity)
 {
@@ -35,6 +41,9 @@ void handleNoteOn(byte channel, byte note, byte velocity)
   playNote();
 }
 
+
+//---------------------------------------------------------------------------------------------
+
 void handlePitchBend(byte channel, int pitch)
 {
   pitch = map(pitch,0,127,0,128);
@@ -42,10 +51,16 @@ void handlePitchBend(byte channel, int pitch)
   SE_SetPitchBend(pitchVal);
 }
 
+
+//---------------------------------------------------------------------------------------------
+
 void handleControlChange(byte channel, byte controller, byte value)
 { 
   fillParams(controller, value);
 }
+
+
+//---------------------------------------------------------------------------------------------
 
 void handleProgramChange(byte channel, byte program)
 {
@@ -65,6 +80,8 @@ void handleProgramChange(byte channel, byte program)
 }
 
 
+//---------------------------------------------------------------------------------------------
+
 void playNote()
 { 	
   if (noteBuf[0]!=255){  
@@ -77,6 +94,9 @@ void playNote()
     noteOut = 255;
   }	
 }
+
+
+//---------------------------------------------------------------------------------------------
 
 void note_insert(byte note)
 {	
@@ -99,6 +119,9 @@ void note_insert(byte note)
   noteBuf[0]=note;                   // place our new note in the beginning of the note buffer
 }
 
+
+//---------------------------------------------------------------------------------------------
+
 void note_delete(byte note)
 {
   for (v=0; v<=4; v++)
@@ -117,6 +140,9 @@ void note_delete(byte note)
   noteBuf[v-1]=255;
 }
 
+
+//---------------------------------------------------------------------------------------------
+
 void MIDI_Setup()
 {
   MIDI.setHandleNoteOn(handleNoteOn);
@@ -128,12 +154,18 @@ void MIDI_Setup()
  // midi.setParam(Midi::PARAM_SEND_FULL_COMMANDS, 0);
 }
 
+
+//---------------------------------------------------------------------------------------------
+
 void MIDI_Read()
 {
   MIDI.read();
   SynthController_ProcessEnvelopes();        // process synth data
   SynthController_Trigger(noteOut, filterVal, attackVal, releaseVal);          // send audio data
 }
+
+
+//---------------------------------------------------------------------------------------------
 
 void fillParams(uint8_t controller, uint8_t value)
 {

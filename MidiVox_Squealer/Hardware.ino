@@ -1,8 +1,16 @@
-// Hardware Setup
 
-extern uint16_t SynthEngine_ProcessSample() ;
-void Hardware_Setup(){
+//---------------------------------------------------------------------------------------------
+//!
+//  This is the method that needs to be defined so that it produce a sample
 
+extern uint16_t SynthEngine_ProcessSample();
+
+//---------------------------------------------------------------------------------------------
+
+//! Hardware Setup. Setup the interrupts driving the audio playback.
+
+void Hardware_Setup()
+{
   //Timer2 setup  This is the audio rate timer, fires an interrupt at 15625 Hz sampling rate
 
   TIMSK2 = 1<<OCIE2A;  // interrupt enable audio timer
@@ -18,12 +26,13 @@ void Hardware_Setup(){
   sei();			// global interrupt enable
 }
 
-uint8_t dacSPI0;		// the two bytes that go to the DAC over SPI
-uint8_t dacSPI1;
 
-// Timer 2 interrupt routine calling the synth engine for every sample
-ISR(TIMER2_COMPA_vect) {
+//---------------------------------------------------------------------------------------------
 
+//! Timer 2 interrupt routine calling the synth engine for every sample
+
+ISR(TIMER2_COMPA_vect)
+{
   OCR2A = 127;
   
   //PORTB &= ~(1<<1); // Frame sync low for SPI (making it low here so that we can measure length of interrupt with scope)
@@ -31,11 +40,11 @@ ISR(TIMER2_COMPA_vect) {
   uint16_t sample = SynthEngine_ProcessSample();
   
   // format sample for SPI port
-  dacSPI0 = sample >> 8;
+  uint8_t dacSPI0 = sample >> 8;
   dacSPI0 >>= 4;
   //dacSPI0 |= 0x30; // Write to DAC-A, unbuffered VREF, gain=1x, Output Power Down Control bit (low impedence out?), 
   dacSPI0 |= 0x70;  //buffered VRef
-  dacSPI1 = sample >> 4;  
+  uint8_t dacSPI1 = sample >> 4;  
 
   // transmit value out the SPI port
   PORTB &= ~(1<<1); // Frame sync low

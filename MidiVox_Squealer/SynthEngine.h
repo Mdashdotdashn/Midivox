@@ -19,7 +19,6 @@ void SE_SetFilterCut(float) ;
 void SE_SetFilterRes(float) ;
 void SE_SetFilterMix(float) ;
 void SE_SetOutput(float) ;
-void SE_SetFeedBackVal(float in);
 
 #endif
 

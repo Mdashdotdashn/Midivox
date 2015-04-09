@@ -26,6 +26,8 @@
 
 void(* resetFunc) (void) = 0;               //declare reset function @ address 0
 
+//---------------------------------------------------------------------------------------------
+
 void setup()
 {
   pinMode(7, OUTPUT);
@@ -39,14 +41,21 @@ void setup()
   loadPresets();						  // Load preset parameters from eeprom 
 } 
 
+
+//---------------------------------------------------------------------------------------------
+
 void loop()
 {
   MIDI_Read();            // poll for MIDI data
+  
   if ((PIND&B1000000)==0) // reset if needed
   {
     saveAndReset();
   }  
 }
+
+
+//---------------------------------------------------------------------------------------------
 
 void flashLED(int pause)
 {	
@@ -59,6 +68,9 @@ void flashLED(int pause)
   PORTD &= ~(1<<7);    //digitalWrite(7, LOW);
 }
 
+
+//---------------------------------------------------------------------------------------------
+
 void saveAndReset()
 {
   uint8_t val=0;
@@ -70,6 +82,9 @@ void saveAndReset()
   }
   resetFunc();
 }
+
+
+//---------------------------------------------------------------------------------------------
 
 void loadPresets()
 {  
