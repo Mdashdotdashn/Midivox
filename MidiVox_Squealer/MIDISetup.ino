@@ -6,7 +6,6 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 
 byte noteOut = 255;
 float pitchVal = 0.0;
-float paramVal = 0.0;
 float filterVal = 0.0;
 float attackVal = 0.0;
 float releaseVal = 0.0;
@@ -65,14 +64,16 @@ void handleControlChange(byte channel, byte controller, byte value)
 void handleProgramChange(byte channel, byte program)
 {
   randomSeed(program);
-  fillParams((unsigned int)0, (unsigned int) random(0,127));
-  fillParams((unsigned int)1, (unsigned int) random(0,127));
-  fillParams((unsigned int)2, (unsigned int) random(0,127));
-  fillParams((unsigned int)3, (unsigned int) random(0,127));
-  fillParams((unsigned int)4, (unsigned int) random(0,127));
-  fillParams((unsigned int)5, (unsigned int) random(0,127));
-  fillParams((unsigned int)6, (unsigned int) random(0,127/4));
-  fillParams((unsigned int)7, (unsigned int) random(0,127/4));
+  fillParams(MCC_WAVE_SHAPE, (unsigned int) random(0,127));
+  fillParams(MCC_WAVE_LOOP, (unsigned int) random(0,127));
+
+  fillParams(MCC_FILTER_CUT, (unsigned int) random(0,127));
+  fillParams(MCC_FILTER_RES, (unsigned int) random(0,127));
+  fillParams(MCC_FILTER_MIX, (unsigned int) random(0,127));
+  fillParams(MCC_FILTER_ENV, (unsigned int) random(0,127));
+
+  fillParams(MCC_ENV_ATTACK, (unsigned int) random(0,127/4));
+  fillParams(MCC_ENV_RELEASE, (unsigned int) random(0,127/4));
   fillParams((unsigned int)8, (unsigned int) random(0,127));
   fillParams((unsigned int)9, (unsigned int) random(0,127));
   fillParams((unsigned int)10, (unsigned int) random(0,110));
@@ -160,7 +161,7 @@ void MIDI_Setup()
 void MIDI_Read()
 {
   MIDI.read();
-  SynthController_ProcessEnvelopes();        // process synth data
+  SynthController_ProcessEnvelopes();        // process envelope on the main loop side so we don't disrupt the audio
   SynthController_Trigger(noteOut, filterVal, attackVal, releaseVal);          // send audio data
 }
 
@@ -169,59 +170,67 @@ void MIDI_Read()
 
 void fillParams(uint8_t controller, uint8_t value)
 {
+    float paramVal = 0.0;
+
     switch (controller)
     {
-    case 0:
+
+    case MCC_WAVE_SHAPE:
       presets[0] = value;
       paramVal= value/float(127);
-      SC_SetParam(0, paramVal);           // Waveform Select
+      SC_SetParam(CP_WAVE_SHAPE, paramVal);           // Waveform Select
       break;
-    case 1:
+
+    case MCC_FILTER_RES:
       presets[1] = value;
       paramVal= value/float(127);
-      SC_SetParam(4, paramVal);           // Filter Resonance
+      SC_SetParam(CP_FILTER_RES, paramVal);           // Filter Resonance
       break;
-    case 2:
+
+    case MCC_FILTER_CUT:
       presets[2] = value;
       paramVal= (value+10)/float(137);
-      SC_SetParam(3, paramVal);           // Filter Cutoff
+      SC_SetParam(CP_FILTER_CUT, paramVal);           // Filter Cutoff
       break;
-    case 3:
+
+    case MCC_FILTER_MIX:
       presets[3] = value; 
       paramVal= value/float(127);
-      SC_SetParam(2, paramVal);           // Filter Mix  
+      SC_SetParam(CP_FILTER_MIX, paramVal);           // Filter Mix  
       break;
-    case 4:
+
+    case MCC_FILTER_ENV:
       presets[4] = value;					// Filter Envelope
       filterVal= value/float(137);
       break;
-    case 5:
+
+    case MCC_WAVE_LOOP:
       presets[5] = value;
       paramVal= (value+8)/float(135);
-      SC_SetParam(1, paramVal);           // Wave Loop/Truncate
+      SC_SetParam(CP_WAVE_LOOP, paramVal);           // Wave Loop/Truncate
       break;
-    case 6:
+
+    case MCC_ENV_ATTACK:
       presets[6] = value;
       attackVal = value/float(48);           // Attack Time
       break;
-    case 7:
+
+    case MCC_ENV_RELEASE:
       presets[7] = value;
       releaseVal = value/float(32);         // Release Time
       break;
-    case 8:
-      presets[8] = value;                 // Velocity Sensitivity - DISABLED!
-	  //veloWeight = value;
-      break;
-    case 9:
+
+    case MCC_OUT_NASTY:
        presets[9] = value;
        paramVal= value/float(127);
-         SC_SetParam(6, paramVal);           // NASTY  
+       SC_SetParam(CP_OUT_NASTY, paramVal);           // NASTY  
     break;
-      case 10:
-       presets[10] = value;
-       paramVal= value/float(127);
-       SC_SetParam(7, paramVal);           // Feedback  
-    break;
+
+    case MCC_OUT_GAIN:
+      presets[5] = value;
+      paramVal= (value)/float(128);
+      SC_SetParam(CP_OUT_GAIN, paramVal);           // Wave Loop/Truncate
+      break;
       
     default:
       break;

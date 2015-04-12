@@ -3,7 +3,6 @@
 
 // Oscillator internal variable
 
-bool oscRunning = false;
 float oscPosition = 0;
 float oscSpeed = 0;
 const uint8_t *oscDataStart = 0;
@@ -43,7 +42,17 @@ const uint8_t *oscShapeTable[]=
    noizTable,
    casioTable,
    squareTable
-} ;
+};
+
+int oscShapeLength[]= 
+{
+  0x100,
+  0x12,
+  0x100,
+  0x2AD,
+  0x244,
+  0x100
+};
 
 //---------------------------------------------------------------------------------------------
 
@@ -66,17 +75,8 @@ void SE_SetPitchBend(float pitchBend)
 
 void SE_SetFrequency(float frequency)
 {
-  if (frequency==0) 
-  {
-    oscFrequencyParam=0 ;
-    oscRunning=false ;
-  }
-  else
-  {
-    oscRunning=true ;
-    oscFrequencyParam = frequency;
-    oscSpeed=(frequency*oscDataLen)/DRIVER_SAMPLERATE; 
-  }
+  oscFrequencyParam = frequency;
+  oscSpeed=(frequency*oscDataLen)/DRIVER_SAMPLERATE; 
 }
 
 
@@ -94,16 +94,11 @@ void SE_SetNote(int note)
 
 void updateLoopPoints() 
 {
-  // original squealer method
-  //int len=oscShapeLength[oscShapeParam];
-  //int o1=128;
-  //int o2=0x100*oscLoopWidth ;
-  //if (o1+o2>0x100) o2=0x100 ;
+  int len=oscShapeLength[oscShapeParam] ;
+  oscDataStart = oscShapeTable[oscShapeParam] ;
+  oscDataLen = len*oscLoopWidth ;
 
-  oscDataStart=oscShapeTable[oscShapeParam];
-  oscDataLen=0x100*oscLoopWidth;
-
-  SE_SetFrequency(oscFrequencyParam);
+  SE_SetFrequency(oscFrequencyParam) ;
 }
 
 
@@ -112,9 +107,9 @@ void updateLoopPoints()
 void SE_SetShape(float shape) 
 {
   int newShape=shape*oscShapeCount-0.01 ;
-  if (newShape==oscShapeParam) return ;
+  if (newShape == oscShapeParam) return ;
 
-  oscShapeParam=newShape;
+  oscShapeParam = newShape;
   updateLoopPoints();
   oscPosition=0;
 }
@@ -174,11 +169,12 @@ void SE_SetFilterRes(float res)
 
 void SynthEngine_Setup() 
 {
-  oscShapeParam=0 ;
-  oscFrequencyParam=0 ;
-  SE_SetNote(0) ;
-  SE_SetShape(0.3) ;
-  clipFPlus=i2fp(16-FIXED_SHIFT) ;
+  oscShapeParam = 0;
+  oscFrequencyParam = 0;
+  SE_SetNote(38);
+  SE_SetShape(0.3);
+
+  clipFPlus=i2fp(16-FIXED_SHIFT);
   clipFMinus=-clipFPlus ;
 }
 
@@ -188,8 +184,6 @@ void SynthEngine_Setup()
 // variables for oscillators
 
 uint16_t index = 0;          // index for wave lookup (the upper 8 bits of the accumulator)
-fixed osc = 0;               // oscillator output
-uint8_t rawOsc=0 ;
 
 //---------------------------------------------------------------------------------------------
 
@@ -200,16 +194,10 @@ uint8_t rawOsc=0 ;
 
 uint16_t SynthEngine_ProcessSample() 
 {
-  // Return 0 if we don't run
-  if (!oscRunning)
-  {
-   return 0x8000 ;
-  }
-  
   // calculate new position inside the
   // current wavetable. 
 
-  oscPosition +=oscSpeed ;  // add in pith, the higher the number, the faster it rolls over, the more cycles per second
+  oscPosition += oscSpeed ;  // add in pith, the higher the number, the faster it rolls over, the more cycles per second
   index=((int)oscPosition) ;
 
   if (index>=oscDataLen)
@@ -218,10 +206,11 @@ uint16_t SynthEngine_ProcessSample()
     index-=oscDataLen ;
   }
   
+  uint8_t rawOsc = 0 ;
   memcpy_P(&rawOsc,&oscDataStart[index],1);
-  osc=(rawOsc-0x80)<<(FIXED_SHIFT-8+4) ;
+  fixed osc = (rawOsc-0x80)<<(FIXED_SHIFT-8+4) ;
  
-  fixed lpin =fp_mul(osc,FP_ONE-oscFMix) ;
+  fixed lpin = fp_mul(osc,FP_ONE-oscFMix) ;
   fixed hpin = -fp_mul(osc,oscFMix) ;
 
   fixed difr = fp_sub(lpin,fltHeight);
@@ -229,9 +218,9 @@ uint16_t SynthEngine_ProcessSample()
   fltSpeed = fp_add(fltSpeed,fp_mul(difr,oscFCut)); //mul by cutoff, less cutoff = no sound, so better not be 0.      
 
   fltHeight += fltSpeed ;
-  fltHeight+=fltDelay-hpin ;
+  fltHeight += fltDelay - hpin ;
 
-  osc=fltHeight ;
+  osc = fltHeight ;
 
   if (fltHeight>clipFPlus) 
   {
@@ -242,16 +231,16 @@ uint16_t SynthEngine_ProcessSample()
     fltHeight=clipFMinus ;
   }
 
-  fltDelay=hpin; 
+  fltDelay = hpin; 
   
-  if (osc<nastyval)  //this is a nasty trick (hence the name) to change a sin to a square, and you can modulate the pulsewith aswell! 
+/*  if (osc<nastyval)  //this is a nasty trick (hence the name) to change a sin to a square, and you can modulate the pulsewith aswell! 
     osc = clipFPlus;
   else if (osc > -nastyval)
     osc = clipFMinus;	
  
-   osc=fp_mul(osc,outValue);
-  
-  osc<<=2;
+  osc = fp_mul(osc,outValue);
+*/  
+  osc <<= 2;
   return osc+0x8000;   // sample format for DAC is 12 bit, left justified
 }
 

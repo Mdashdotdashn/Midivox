@@ -2,12 +2,7 @@
 
 #include "SynthEngine.h"
 
-byte lastKeys = 255;
-int transposeVal = 48; // -3[transpose multiplier] * 12
-byte note = 255;
-
 typedef void (*ControllerFunction) (float);
-
 
 //---------------------------------------------------------------------------------------------
 
@@ -17,21 +12,6 @@ enum ControllerParamStatus
   CPS_UPDATE,
   CPS_ENVUP,
   CPS_ENVDOWN
-};
-
-
-//---------------------------------------------------------------------------------------------
-
-enum ControllerParameters
-{
-  CP_WAVE_SHAPE = 0,
-  CP_WAVE_LOOP =1 ,
-  CP_FILTER_MIX =2 ,
-  CP_FILTER_CUT =3 ,
-  CP_FILTER_RES = 4,
-  CP_OUT_GAIN =5 ,
-  CP_OUT_NASTY=6 ,
-  CP_LAST
 };
 
 
@@ -67,11 +47,12 @@ struct patch controllerPatch;
 
 //---------------------------------------------------------------------------------------------
 
-void SC_SetParam(byte which,float value, bool reset)
+void SC_SetParam(ControllerParameters which,float value, bool forceEnvelopeReset)
 {
-  struct params *current=controllerParams+which ;
-  current->current_=value ;
-  if ((current->status_==CPS_INACTIVE)||(reset))
+  struct params *current = controllerParams + which;
+  current->current_ = value;
+  
+  if ((current->status_==CPS_INACTIVE) || (forceEnvelopeReset))
   {
     current->status_=CPS_UPDATE;
     current->envelope_=0 ;  
@@ -99,34 +80,34 @@ void SC_SetRelease(float releaseVal)
 
 void SC_SetFilterEnvelope(float filtEnvVal)
 {
-			controllerPatch.filterEnvelope_ = filtEnvVal;
+  controllerPatch.filterEnvelope_ = filtEnvVal;
 };
 
 
 //---------------------------------------------------------------------------------------------
 
-void SC_SetEnvelope(byte which,float target,float time)
+void SC_SetEnvelope(byte which, float target, float time)
 {
   struct params * current = controllerParams + which;
   if (time < 0.001) 
   {
     current -> envelope_= target ;
-    current->status_=CPS_UPDATE ;
+    current->status_ = CPS_UPDATE ;
   } 
   else 
   {
     current -> target_= target ;
     if (target<current->envelope_)
     {
-      float sp=(current->envelope_-target)/time/200.0 ;
-      current->speed_=sp ;
-      current->status_=CPS_ENVDOWN ;
+      float sp = (current->envelope_-target) / time / 200.0;
+      current->speed_ = sp ;
+      current->status_ = CPS_ENVDOWN ;
     } 
     else 
     {
-      float sp=(target-current->envelope_)/time/200.0 ;
-      current->speed_=sp ;
-      current->status_=CPS_ENVUP ;
+      float sp = (target-current->envelope_) / time / 200.0 ;
+      current->speed_ = sp ;
+      current->status_ = CPS_ENVUP ;
     }
   }
 }
@@ -142,33 +123,33 @@ void SynthController_ProcessEnvelopes()
   {
     if (current->status_!=CPS_INACTIVE)
     {
-      float value=current->current_+current->envelope_ ;
-      if (value>1.0) value=1.0;
-      if (value<0) value=0.0;
+      float value = current->current_ + current->envelope_ ;
+      if (value>1.0) value = 1.0;
+      if (value<0) value = 0.0;
       current->update_(value);
       
       switch(current->status_)
       {
-        
+
       case CPS_UPDATE:
         current->status_==CPS_INACTIVE ;
         break ;
         
       case CPS_ENVUP:
-        current->envelope_+=current->speed_ ;
-        if (current->envelope_>current->target_)
+        current->envelope_ += current->speed_ ;
+        if (current->envelope_ > current->target_)
         {
-          current->envelope_=current->target_ ;
-          current->status_=CPS_UPDATE ;
+          current->envelope_ = current->target_;
+          current->status_ = CPS_UPDATE ;
         }
         break ;
         
       case CPS_ENVDOWN:
-        current->envelope_-= current -> speed_ ;
-        if (current->envelope_< current->target_) 
+        current->envelope_ -= current -> speed_ ;
+        if (current->envelope_ < current->target_) 
         {
-          current->envelope_= current->target_ ;
-          current->status_= CPS_UPDATE ;
+          current->envelope_ = current->target_ ;
+          current->status_ = CPS_UPDATE ;
         }
         break ;
         
@@ -183,7 +164,8 @@ void SynthController_ProcessEnvelopes()
 
 void SynthController_Setup()
 {
-  SynthEngine_Setup() ;
+  SynthEngine_Setup();
+
   controllerPatch.attack_ = 0.02;
   controllerPatch.release_ = 0.02;
   controllerPatch.filterEnvelope_ = 0.0;
@@ -239,37 +221,35 @@ void SynthController_Setup()
 
 void SynthController_Trigger(byte keys, float filterVal, float attackVal, float releaseVal)
 {
+  static byte lastKeys = 255;
+  static byte note = 255;
+  static int transposeVal = 48; // -3[transpose multiplier] * 12
+ 
   if (lastKeys!=keys)
   {
     note = keys; 
     lastKeys = keys;
-		
-    if (filterVal > 0.0)
+
+    if (note < 84)
     {
-      if (note < 84)
-      {	// notecap could be <255
-	SE_SetNote(note - transposeVal);
-        SC_SetEnvelope(CP_FILTER_CUT, 1.0, filterVal); // if Filter Envelope
-	SC_SetEnvelope(CP_OUT_GAIN, 1.0, attackVal);
-      }
-      else
+      SE_SetNote(note - transposeVal);
+      SC_SetEnvelope(CP_OUT_GAIN, 1.0, attackVal);
+      if (filterVal)
       {
-	SC_SetEnvelope(CP_FILTER_CUT, 0.0, filterVal);
-	SC_SetEnvelope(CP_OUT_GAIN,0.0,releaseVal);
+        float filterAttack = attackVal * filterVal; 
+        SC_SetEnvelope(CP_FILTER_CUT, 1.0, filterAttack); // if Filter Envelope
       }
-    }		
+    } 
     else
     {
-      if (note < 84)
-      {										// notecap could be <255
-	SE_SetNote(note - transposeVal);
-	SC_SetEnvelope(CP_OUT_GAIN, 1.0, attackVal);
-      } 
-      else
+      SC_SetEnvelope(CP_OUT_GAIN ,0.0 , releaseVal);
+      if (filterVal)
       {
-        SC_SetEnvelope(CP_OUT_GAIN,0.0,releaseVal) ;  // CHANGED
-      }
+        float filterRelease = releaseVal * filterVal; 
+        SC_SetEnvelope(CP_FILTER_CUT, 0.0, filterRelease); // if Filter Envelope
+      }        
     }
+
   }
 }
 
