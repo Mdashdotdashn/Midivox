@@ -39,7 +39,7 @@ void setup()
   MIDI_Setup();                           // Set up MIDI data handlers and such
   SynthController_Setup();                // Initialize synth parameters
   Hardware_Setup();                       // Setup the arduino hardware, interrupts,etc..
-  loadPresets();						  // Load preset parameters from eeprom 
+ // loadPresets();						  // Load preset parameters from eeprom 
 } 
 
 
