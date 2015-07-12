@@ -237,9 +237,9 @@ uint16_t SynthEngine_ProcessSample()
     osc = clipFPlus;
   else if (osc > -nastyval)
     osc = clipFMinus;	
- 
+*/ 
   osc = fp_mul(osc,outValue);
-*/  
+  
   osc <<= 2;
   return osc+0x8000;   // sample format for DAC is 12 bit, left justified
 }
